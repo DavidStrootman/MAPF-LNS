@@ -64,8 +64,10 @@ public:
     bool run();
     void validateSolution() const;
     void writeIterStatsToFile(string file_name) const;
-    void writeResultToFile(string file_name) const;
-    void writePathsToFile(string file_name) const;
+    void writeResultToFile(const string& file_name) const;
+    void writePathsToFile(const string& file_name) const;
+    void writePathsToStream(std::ostream& out_stream) const;
+    void writePathsToStdout() const;
     string getSolverName() const { return "LNS(" + init_algo_name + ";" + replan_algo_name + ")"; }
 private:
     int num_neighbor_sizes = 1; //4; // so the neighbor size could be 2, 4, 8, 16
@@ -82,7 +84,6 @@ private:
     int num_of_iterations;
 
     high_resolution_clock::time_point start_time;
-
 
     PathTable path_table; // 1. stores the paths of all agents in a time-space table;
     // 2. avoid making copies of this variable as much as possible.

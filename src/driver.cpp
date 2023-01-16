@@ -1,10 +1,10 @@
 ﻿#include <boost/program_options.hpp>
 #include <boost/tokenizer.hpp>
+
 #include "LNS.h"
 #include "AnytimeBCBS.h"
 #include "AnytimeEECBS.h"
 #include "PIBT/pibt.h"
-
 
 /* Main function */
 int main(int argc, char** argv)
@@ -16,14 +16,19 @@ int main(int argc, char** argv)
 		("help", "produce help message")
 
 		// params for the input instance and experiment settings
-		("map,m", po::value<string>()->required(), "input file for map")
-		("agents,a", po::value<string>()->required(), "input file for agents")
+        ("unityConfig,u", po::value<string>(), "The path to an env config. If this parameter is "
+                                               "provided the map, agents and agentNum parameters will be ignored "
+                                               "and imported from this file.")
+		("map,m", po::value<string>(), "input file for map")
+		("agents,a", po::value<string>(), "input file for agents")
 		("agentNum,k", po::value<int>()->default_value(0), "number of agents")
         ("output,o", po::value<string>(), "output file")
 		("cutoffTime,t", po::value<double>()->default_value(7200), "cutoff time (seconds)")
 		("screen,s", po::value<int>()->default_value(0),
 		        "screen option (0: none; 1: LNS results; 2:LNS detailed results; 3: MAPF detailed results)")
 		("stats", po::value<string>(), "output stats file")
+		("solutionPrint", po::bool_switch(), "Write the solution to stdout.")
+        ("solutionFile", po::value<string>(), "Write the solution to this file.")
 
 		// solver
 		("solver", po::value<string>()->default_value("LNS"), "solver (LNS, A-BCBS, A-EECBS)")
@@ -57,9 +62,15 @@ int main(int argc, char** argv)
     po::notify(vm);
 
 	srand((int)time(0));
+    Instance instance;
 
-	Instance instance(vm["map"].as<string>(), vm["agents"].as<string>(),
-		vm["agentNum"].as<int>());
+    if (vm.count("unityConfig")) {
+        UnityConfig unityConfig = UnityConfig::fromJSONFile(vm["unityConfig"].as<string>());
+        instance = Instance::fromUnityConf(unityConfig);
+    } else {
+        instance = {vm["map"].as<string>(), vm["agents"].as<string>(),vm["agentNum"].as<int>()};
+    }
+
     double time_limit = vm["cutoffTime"].as<double>();
     int screen = vm["screen"].as<int>();
 	srand(0);
@@ -79,9 +90,15 @@ int main(int argc, char** argv)
             lns.writeResultToFile(vm["output"].as<string>());
         if (vm.count("stats"))
             lns.writeIterStatsToFile(vm["stats"].as<string>());
-        // lns.writePathsToFile("path.txt");
-    }
-    else if (vm["solver"].as<string>() == "A-BCBS") // anytime BCBS(w, 1)
+        if (vm.count("solutionPrint")) {
+            if (vm["solutionPrint"].as<bool>()) {
+                lns.writePathsToStdout();
+            }
+        }
+        if (vm.count("solutionFile")) {
+            lns.writePathsToFile(vm["solutionFile"].as<string>());
+        }
+    } else if (vm["solver"].as<string>() == "A-BCBS") // anytime BCBS(w, 1)
     {
         AnytimeBCBS bcbs(instance, time_limit, screen);
         bcbs.run();
@@ -90,8 +107,7 @@ int main(int argc, char** argv)
             bcbs.writeResultToFile(vm["output"].as<string>());
         if (vm.count("stats"))
             bcbs.writeIterStatsToFile(vm["stats"].as<string>());
-    }
-    else if (vm["solver"].as<string>() == "A-EECBS") // anytime EECBS
+    } else if (vm["solver"].as<string>() == "A-EECBS") // anytime EECBS
     {
         AnytimeEECBS eecbs(instance, time_limit, screen);
         eecbs.run();
@@ -107,5 +123,4 @@ int main(int argc, char** argv)
 	    exit(-1);
     }
 	return 0;
-
 }

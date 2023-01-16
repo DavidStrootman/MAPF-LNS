@@ -7,9 +7,10 @@ IF(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE "RELEASE")
 ENDIF()
 
-include_directories("inc" "inc/CBS" "inc/PIBT")
+set (HEADERS "inc" "inc/CBS" "inc/PIBT")
+include_directories(${HEADERS})
 file(GLOB SOURCES "src/*.cpp" "src/CBS/*.cpp" "src/PIBT/*.cpp")
-add_executable(lns ${SOURCES})
+add_executable(lns ${SOURCES} ${HEADERS})
 
 # Find Boost
 find_package(Boost REQUIRED COMPONENTS program_options system filesystem)

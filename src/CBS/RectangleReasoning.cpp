@@ -261,8 +261,8 @@ bool RectangleReasoning::ExtractBarriers(const MDD& mdd, int loc, int timestep,
 			}
 			barrier_end_time = extent_U[i];
 			B.emplace_back(-1,  // for now, the agent index is not important,  so we just use -1 for simplexity.
-				instance.linearizeCoordinate(barrier_start_x, barrier_start_y),
-				instance.linearizeCoordinate(barrier_end_x, barrier_end_y), 
+				instance.linearizeCoordinate(barrier_start_x, barrier_start_y, instance.num_of_cols),
+				instance.linearizeCoordinate(barrier_end_x, barrier_end_y, instance.num_of_cols),
 				barrier_end_time, constraint_type::BARRIER);
 		}
 	}
@@ -342,7 +342,7 @@ bool RectangleReasoning::blockedNodes(const vector<PathEntry>& path,
 
 	for (int t = t_min; t <= t_max; t++)
 	{
-		int loc = instance.linearizeCoordinate(b_l.first, b_l.second) + (t - t_b_l) * dir;
+		int loc = instance.linearizeCoordinate(b_l.first, b_l.second, instance.num_of_cols) + (t - t_b_l) * dir;
 		if (path[t].location == loc)
 		{
 			return true;
@@ -733,9 +733,9 @@ bool RectangleReasoning::hasNodeOnBarrier(const MDD* mdd, int y_start, int y_end
 	for (int t2 = t_min + 1; t2 <= min(t_max, (int)mdd->levels.size() - 1); t2++)
 	{
 		if (horizontal)
-			loc = instance.linearizeCoordinate(x, y_start + (t2 - t_min) * sign);
+			loc = instance.linearizeCoordinate(x, y_start + (t2 - t_min) * sign, instance.num_of_cols);
 		else
-			loc = instance.linearizeCoordinate(y_start + (t2 - t_min) * sign, x);
+			loc = instance.linearizeCoordinate(y_start + (t2 - t_min) * sign, x, instance.num_of_cols);
 		MDDNode* it = nullptr;
 		for (MDDNode* n : mdd->levels[t2])
 		{
@@ -760,7 +760,7 @@ bool RectangleReasoning::addModifiedHorizontalBarrierConstraint(int agent, const
 	int t_max = min(Rg_t, (int)mdd->levels.size() - 1);
 	for (int t2 = t_min; t2 <= t_max; t2++)
 	{
-		int loc = instance.linearizeCoordinate(x,  (Ri_y + (t2 - Ri_t) * sign));
+		int loc = instance.linearizeCoordinate(x,  (Ri_y + (t2 - Ri_t) * sign), instance.num_of_cols);
 		MDDNode* it = nullptr;
 		for (MDDNode* n : mdd->levels[t2])
 		{
@@ -772,8 +772,8 @@ bool RectangleReasoning::addModifiedHorizontalBarrierConstraint(int agent, const
 		}
 		if (it == nullptr && t1 >= 0) // add constraints [t1, t2)
 		{
-			int loc1 = instance.linearizeCoordinate(x, (Ri_y + (t1 - Ri_t) * sign));
-			int loc2 = instance.linearizeCoordinate(x, (Ri_y + (t2 - 1 - Ri_t) * sign));
+			int loc1 = instance.linearizeCoordinate(x, (Ri_y + (t1 - Ri_t) * sign), instance.num_of_cols);
+			int loc2 = instance.linearizeCoordinate(x, (Ri_y + (t2 - 1 - Ri_t) * sign), instance.num_of_cols);
 			constraints.emplace_back(agent, loc1, loc2, t2 - 1, constraint_type::BARRIER);
 			t1 = -1;
 			continue;
@@ -784,7 +784,7 @@ bool RectangleReasoning::addModifiedHorizontalBarrierConstraint(int agent, const
 		}
 		if (it != nullptr && t2 == t_max)
 		{
-			int loc1 = instance.linearizeCoordinate(x, (Ri_y + (t1 - Ri_t) * sign));
+			int loc1 = instance.linearizeCoordinate(x, (Ri_y + (t1 - Ri_t) * sign), instance.num_of_cols);
 			constraints.emplace_back(agent, loc1, loc, t2, constraint_type::BARRIER); // add constraints [t1, t2]
 		}
 	}
@@ -809,7 +809,7 @@ bool RectangleReasoning::addModifiedVerticalBarrierConstraint(int agent, const M
 	int t_max = min(Rg_t, (int)mdd->levels.size() - 1);
 	for (int t2 = t_min; t2 <= t_max; t2++)
 	{
-		int loc = instance.linearizeCoordinate((Ri_x + (t2 - Ri_t) * sign), y);
+		int loc = instance.linearizeCoordinate((Ri_x + (t2 - Ri_t) * sign), y, instance.num_of_cols);
 		MDDNode* it = nullptr;
 		for (MDDNode* n : mdd->levels[t2])
 		{
@@ -821,8 +821,8 @@ bool RectangleReasoning::addModifiedVerticalBarrierConstraint(int agent, const M
 		}
 		if (it == nullptr && t1 >= 0) // add constraints [t1, t2)
 		{
-			int loc1 = instance.linearizeCoordinate((Ri_x + (t1 - Ri_t) * sign), y);
-			int loc2 = instance.linearizeCoordinate((Ri_x + (t2 - 1 - Ri_t) * sign), y);
+			int loc1 = instance.linearizeCoordinate((Ri_x + (t1 - Ri_t) * sign), y, instance.num_of_cols);
+			int loc2 = instance.linearizeCoordinate((Ri_x + (t2 - 1 - Ri_t) * sign), y, instance.num_of_cols);
 			constraints.emplace_back(agent, loc1, loc2, t2 - 1, constraint_type::BARRIER);
 			t1 = -1;
 			continue;
@@ -833,7 +833,7 @@ bool RectangleReasoning::addModifiedVerticalBarrierConstraint(int agent, const M
 		}
 		if (it != nullptr && t2 == t_max)
 		{
-			int loc1 = instance.linearizeCoordinate((Ri_x + (t1 - Ri_t) * sign), y);
+			int loc1 = instance.linearizeCoordinate((Ri_x + (t1 - Ri_t) * sign), y, instance.num_of_cols);
 			constraints.emplace_back(agent, loc1, loc, t2, constraint_type::BARRIER); // add constraints [t1, t2]
 		}
 	}
@@ -862,7 +862,7 @@ bool RectangleReasoning::blocked(const Path& path, const list<Constraint>& const
 			{
 				for (int i = 0; i <= min(y2 - y1, t); i++)
 				{
-					if (traverse(path, instance.linearizeCoordinate(x1, y2 - i), t - i))
+					if (traverse(path, instance.linearizeCoordinate(x1, y2 - i, instance.num_of_cols), t - i))
 						return true;
 				}
 			}
@@ -870,7 +870,7 @@ bool RectangleReasoning::blocked(const Path& path, const list<Constraint>& const
 			{
 				for (int i = 0; i <= min(y1 - y2, t); i++)
 				{
-					if (traverse(path, instance.linearizeCoordinate(x1, y2 + i), t - i))
+					if (traverse(path, instance.linearizeCoordinate(x1, y2 + i, instance.num_of_cols), t - i))
 						return true;
 				}
 			}
@@ -881,7 +881,7 @@ bool RectangleReasoning::blocked(const Path& path, const list<Constraint>& const
 			{
 				for (int i = 0; i <= min(x2 - x1, t); i++)
 				{
-					if (traverse(path, instance.linearizeCoordinate(x2 - i, y1), t - i))
+					if (traverse(path, instance.linearizeCoordinate(x2 - i, y1, instance.num_of_cols), t - i))
 						return true;
 				}
 			}
@@ -889,7 +889,7 @@ bool RectangleReasoning::blocked(const Path& path, const list<Constraint>& const
 			{
 				for (int i = 0; i <= min(x1 - x2, t); i++)
 				{
-					if (traverse(path, instance.linearizeCoordinate(x2 + i, y1), t - i))
+					if (traverse(path, instance.linearizeCoordinate(x2 + i, y1, instance.num_of_cols), t - i))
 						return true;
 				}
 			}

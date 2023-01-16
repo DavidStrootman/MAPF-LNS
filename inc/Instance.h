@@ -1,9 +1,13 @@
 #pragma once
+#include <boost/tokenizer.hpp>
+
 #include"common.h"
+#include "UnityConfig.h"
+
 
 
 // Currently only works for undirected unweighted 4-nighbor grids
-class Instance 
+class Instance
 {
 public:
 	int num_of_cols;
@@ -13,9 +17,18 @@ public:
 	// enum valid_moves_t { NORTH, EAST, SOUTH, WEST, WAIT_MOVE, MOVE_COUNT };  // MOVE_COUNT is the enum's size
 
 	Instance()=default;
-	Instance(const string& map_fname, const string& agent_fname, 
+	Instance(const string& map_fname, const string& agent_fname,
 		int num_of_agents = 0, int num_of_rows = 0, int num_of_cols = 0, int num_of_obstacles = 0, int warehouse_width = 0);
 
+    Instance(int num_of_agents,
+             int num_of_rows,
+             int num_of_cols,
+             int num_of_obstacles,
+             int map_size,
+             vector<bool> map,
+             vector<int> start_locations,
+             vector<int> goal_locations);
+    static Instance fromUnityConf(UnityConfig unityConf);
 
 	void printAgents() const;
 	string getMapFile() const {return map_fname;};
@@ -35,7 +48,7 @@ public:
     list<int> getNeighbors(int curr) const;
 
 
-    inline int linearizeCoordinate(int row, int col) const { return ( this->num_of_cols * row + col); }
+    static inline int linearizeCoordinate(int row, int col, int num_of_cols) { return ( num_of_cols * row + col); }
     inline int getRowCoordinate(int id) const { return id / this->num_of_cols; }
     inline int getColCoordinate(int id) const { return id % this->num_of_cols; }
     inline pair<int, int> getCoordinate(int id) const { return make_pair(id / this->num_of_cols, id % this->num_of_cols); }
@@ -97,7 +110,7 @@ private:
 
 	  int randomWalk(int loc, int steps) const;
 
-	  // Class  SingleAgentSolver can access private members of Node 
+	  // Class  SingleAgentSolver can access private members of Node
 	  friend class SingleAgentSolver;
 };
 

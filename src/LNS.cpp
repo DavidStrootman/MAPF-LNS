@@ -79,12 +79,15 @@ bool LNS::run()
 
         switch (destroy_strategy)
         {
+            // Agent-Based Neighborhood
             case RANDOMWALK:
                 succ = generateNeighborByRandomWalk();
                 break;
+            // Map-Based Neighborhood
             case INTERSECTION:
                 succ = generateNeighborByIntersection();
                 break;
+            // Random Neighborhood
             case RANDOMAGENTS:
                 neighbor.agents.resize(agents.size());
                 for (int i = 0; i < (int)agents.size(); i++)
@@ -483,7 +486,7 @@ void LNS::updatePIBTResult(const PIBT_Agents& A,vector<int> shuffled_agents){
             agents[a_id].path[n_index] = PathEntry(n->v->getId());
 
             //record the last time agent reach the goal from a non-goal vertex.
-            if(agents[a_id].path_planner.goal_location == n->v->getId() 
+            if(agents[a_id].path_planner.goal_location == n->v->getId()
                 && n_index - 1>=0
                 && agents[a_id].path_planner.goal_location !=  agents[a_id].path[n_index - 1].location)
                 last_goal_visit = n_index;
@@ -621,7 +624,7 @@ bool LNS::generateNeighborByRandomWalk()
     int a = findMostDelayedAgent();
     if (a < 0)
         return false;
-    
+
     set<int> neighbors_set;
     neighbors_set.insert(a);
     randomWalk(a, agents[a].path[0].location, 0, neighbors_set, neighbor_size, (int) agents[a].path.size() - 1);
@@ -826,7 +829,7 @@ void LNS::writeIterStatsToFile(string file_name) const
     output.close();
 }
 
-void LNS::writeResultToFile(string file_name) const
+void LNS::writeResultToFile(const string& file_name) const
 {
     std::ifstream infile(file_name);
     bool exist = infile.good();
@@ -864,21 +867,30 @@ void LNS::writeResultToFile(string file_name) const
     stats.close();
 }
 
-void LNS::writePathsToFile(string file_name) const
-{
-    std::ofstream output;
-    output.open(file_name);
-    // header
-    output << agents.size() << endl;
-
-    for (const auto &agent : agents)
-    {
-        for (const auto &state : agent.path)
-            output << state.location << ",";
-        output << endl;
+void LNS::writePathsToStream(std::ostream& out_stream) const {
+    out_stream << agents.size() << endl;
+    for (const auto &agent: agents) {
+        for (const auto &state: agent.path) {
+            out_stream << state.location << ",";
+        }
+        out_stream << endl;
     }
+}
+
+void LNS::writePathsToFile(const string& file_name) const
+{
+    std::ofstream output(file_name);
+
+    writePathsToStream(output);
+
     output.close();
 }
+
+void LNS::writePathsToStdout() const
+{
+    writePathsToStream(std::cout);
+}
+
 /*
 bool LNS::generateNeighborByStart()
 {

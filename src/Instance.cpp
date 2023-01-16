@@ -1,8 +1,8 @@
-#include<boost/tokenizer.hpp>
+#include <boost/tokenizer.hpp>
 #include <algorithm>    // std::shuffle
-#include <random>      // std::default_random_engine
+#include <random>       // std::default_random_engine
 #include <chrono>       // std::chrono::system_clock
-#include"Instance.h"
+#include "Instance.h"
 
 int RANDOM_WALK_STEPS = 100000;
 
@@ -41,9 +41,56 @@ Instance::Instance(const string& map_fname, const string& agent_fname,
 			exit(-1);
 		}
 	}
-
 }
 
+Instance::Instance(int num_of_agents,
+                   int num_of_rows,
+                   int num_of_cols,
+                   int num_of_obstacles,
+                   int map_size,
+                   vector<bool> map,
+                   vector<int> start_locations,
+                   vector<int> goal_locations):
+                  num_of_agents(num_of_agents),
+                  num_of_rows(num_of_rows),
+                  num_of_cols(num_of_cols),
+                  map_size(map_size),
+                  my_map(map),
+                  start_locations(start_locations),
+                  goal_locations(goal_locations) {
+    // map_fname and agent_fname should be unused everywhere when using this constructor.
+    map_fname = "map_generated_from_unity_conf.txt";
+    agent_fname = "agents_generated_from_unity_conf.txt";
+}
+
+Instance Instance::fromUnityConf(UnityConfig unityConf) {
+    // load map
+    int num_of_agents = unityConf.initialNodes.size();
+    int num_of_rows = unityConf.matrix.size();
+    int num_of_cols = unityConf.matrix[0].size();
+    int num_of_obstacles = 0;
+    int map_size = num_of_rows * num_of_cols;
+    vector<bool> my_map = {};
+    my_map.resize(map_size, false);
+
+    for (int i = 0; i < num_of_rows; i++) {
+		for (int j = 0; j < num_of_cols; j++) {
+			my_map[linearizeCoordinate(i, j, num_of_cols)] = unityConf.matrix[i][j];
+		}
+	}
+
+    vector<int> start_locations = {};
+    for (auto & initialNode : unityConf.initialNodes) {
+        start_locations.push_back(linearizeCoordinate(initialNode[0], initialNode[1], num_of_cols));
+    }
+
+    vector<int> goal_locations = {};
+    for (auto & goalNode : unityConf.goalNodes) {
+        goal_locations.push_back(linearizeCoordinate(goalNode[0], goalNode[1], num_of_cols));
+    }
+
+    return {num_of_agents, num_of_rows, num_of_cols, num_of_obstacles, map_size, my_map, start_locations, goal_locations};
+}
 
 int Instance::randomWalk(int curr, int steps) const
 {
@@ -80,7 +127,7 @@ void Instance::generateRandomAgents(int warehouse_width)
 		while ( k < num_of_agents)
 		{
 			int x = rand() % num_of_rows, y = rand() % num_of_cols;
-			int start = linearizeCoordinate(x, y);
+			int start = linearizeCoordinate(x, y, num_of_cols);
 			if (my_map[start] || starts[start])
 				continue;
 				
@@ -91,12 +138,12 @@ void Instance::generateRandomAgents(int warehouse_width)
 			// find goal
             x = rand() % num_of_rows;
             y = rand() % num_of_cols;
-            int goal = linearizeCoordinate(x, y);
+            int goal = linearizeCoordinate(x, y, num_of_cols);
             while (my_map[goal] || goals[goal])
             {
                 x = rand() % num_of_rows;
                 y = rand() % num_of_cols;
-                goal = linearizeCoordinate(x, y);
+                goal = linearizeCoordinate(x, y, num_of_cols);
             }
 			//int goal = randomWalk(start, RANDOM_WALK_STEPS);
 			//while (goals[goal])
@@ -118,7 +165,7 @@ void Instance::generateRandomAgents(int warehouse_width)
 			int x = rand() % num_of_rows, y = rand() % warehouse_width;
 			if (k % 2 == 0)
 				y = num_of_cols - y - 1;
-			int start = linearizeCoordinate(x, y);
+			int start = linearizeCoordinate(x, y, num_of_cols);
 			if (starts[start])
 				continue;
 			// update start
@@ -134,7 +181,7 @@ void Instance::generateRandomAgents(int warehouse_width)
 			int x = rand() % num_of_rows, y = rand() % warehouse_width;
 			if (k % 2 == 1)
 				y = num_of_cols - y - 1;
-			int goal = linearizeCoordinate(x, y);
+			int goal = linearizeCoordinate(x, y, num_of_cols);
 			if (goals[goal])
 				continue;
 			// update goal
@@ -160,14 +207,14 @@ bool Instance::addObstacle(int obstacle)
 	while (start < 3 && goal < 4)
 	{
 		if (x[start] < 0 || x[start] >= num_of_rows || y[start] < 0 || y[start] >= num_of_cols 
-			|| my_map[linearizeCoordinate(x[start], y[start])])
+			|| my_map[linearizeCoordinate(x[start], y[start], num_of_cols)])
 			start++;
 		else if (goal <= start)
 			goal = start + 1;
 		else if (x[goal] < 0 || x[goal] >= num_of_rows || y[goal] < 0 || y[goal] >= num_of_cols 
-			|| my_map[linearizeCoordinate(x[goal], y[goal])])
+			|| my_map[linearizeCoordinate(x[goal], y[goal], num_of_cols)])
 			goal++;
-		else if (isConnected(linearizeCoordinate(x[start], y[start]), linearizeCoordinate(x[goal], y[goal]))) // cannot find a path from start to goal 
+		else if (isConnected(linearizeCoordinate(x[start], y[start], num_of_cols), linearizeCoordinate(x[goal], y[goal], num_of_cols))) // cannot find a path from start to goal
 		{
 			start = goal;
 			goal++;
@@ -221,16 +268,16 @@ void Instance::generateConnectedRandomGrid(int rows, int cols, int obstacles)
 	// add padding
 	i = 0;
 	for (j = 0; j<num_of_cols; j++)
-		my_map[linearizeCoordinate(i, j)] = true;
+		my_map[linearizeCoordinate(i, j, num_of_cols)] = true;
 	i = num_of_rows - 1;
 	for (j = 0; j<num_of_cols; j++)
-		my_map[linearizeCoordinate(i, j)] = true;
+		my_map[linearizeCoordinate(i, j, num_of_cols)] = true;
 	j = 0;
 	for (i = 0; i<num_of_rows; i++)
-		my_map[linearizeCoordinate(i, j)] = true;
+		my_map[linearizeCoordinate(i, j, num_of_cols)] = true;
 	j = num_of_cols - 1;
 	for (i = 0; i<num_of_rows; i++)
-		my_map[linearizeCoordinate(i, j)] = true;
+		my_map[linearizeCoordinate(i, j, num_of_cols)] = true;
 
 	// add obstacles uniformly at random
 	i = 0;
@@ -285,7 +332,7 @@ bool Instance::loadMap()
 	for (int i = 0; i < num_of_rows; i++) {
 		getline(myfile, line);
 		for (int j = 0; j < num_of_cols; j++) {
-			my_map[linearizeCoordinate(i, j)] = (line[j] != '.');
+			my_map[linearizeCoordinate(i, j, num_of_cols)] = (line[j] != '.');
 		}
 	}
 	myfile.close();
@@ -306,7 +353,7 @@ void Instance::printMap() const
 	{
 		for (int j = 0; j < num_of_cols; j++)
 		{
-			if (this->my_map[linearizeCoordinate(i, j)])
+			if (this->my_map[linearizeCoordinate(i, j, num_of_cols)])
 				cout << '@';
 			else
 				cout << '.';
@@ -330,7 +377,7 @@ void Instance::saveMap() const
 	{
 		for (int j = 0; j < num_of_cols; j++)
 		{
-			if (my_map[linearizeCoordinate(i, j)])
+			if (my_map[linearizeCoordinate(i, j, num_of_cols)])
 				myfile << "@";
 			else
 				myfile << ".";
@@ -375,13 +422,13 @@ bool Instance::loadAgents()
 			int col = atoi((*beg).c_str());
 			beg++;
 			int row = atoi((*beg).c_str());
-			start_locations[i] = linearizeCoordinate(row, col);
+			start_locations[i] = linearizeCoordinate(row, col, num_of_cols);
 			// read goal [row,col] for agent i
 			beg++;
 			col = atoi((*beg).c_str());
 			beg++;
 			row = atoi((*beg).c_str());
-			goal_locations[i] = linearizeCoordinate(row, col);
+			goal_locations[i] = linearizeCoordinate(row, col, num_of_cols);
 		}
 	}
 	else // My benchmark
@@ -402,13 +449,13 @@ bool Instance::loadAgents()
 			int row = atoi((*c_beg).c_str());
 			c_beg++;
 			int col = atoi((*c_beg).c_str());
-			start_locations[i] = linearizeCoordinate(row, col);
+			start_locations[i] = linearizeCoordinate(row, col, num_of_cols);
 			// read goal [row,col] for agent i
 			c_beg++;
 			row = atoi((*c_beg).c_str());
 			c_beg++;
 			col = atoi((*c_beg).c_str());
-			goal_locations[i] = linearizeCoordinate(row, col);
+			goal_locations[i] = linearizeCoordinate(row, col, num_of_cols);
 		}
 	}
 	myfile.close();
